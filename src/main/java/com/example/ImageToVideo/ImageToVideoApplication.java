@@ -1,5 +1,6 @@
 package com.example.ImageToVideo;
 
+import org.bytedeco.ffmpeg.avformat.AVFormatContext;
 import org.bytedeco.javacv.*;
 import org.bytedeco.javacv.Frame;
 import org.slf4j.Logger;
@@ -30,11 +31,18 @@ public class ImageToVideoApplication {
 	private static int width = 640;  // Set to your image width
 	private static int height = 480; // Set to your image height
 	private static int fps = 30;
-	private static int numberOfImages = 30 * 5;
+
+	private static int videoLengthSeconds;
+	private static int numberOfImages;
 
 	public static void main(String[] args) {
 		SpringApplication.run(ImageToVideoApplication.class, args);
 		logger.info("Launch ImageToVideo");
+
+		//getMP3Duration();
+		videoLengthSeconds = getMP3Duration()+1;
+		numberOfImages = fps * videoLengthSeconds;
+		logger.info("Need to create {} images", numberOfImages);
 
 		cleanUpDisk(imageFileDir);
 		createImageSequence();
@@ -42,6 +50,7 @@ public class ImageToVideoApplication {
 		cleanUpDisk(videoFileDir);
 		createVideoWithoutSound();
 		createVideoWithSound();
+
 	}
 
 	private static void cleanUpDisk(String folderPath) {
@@ -142,7 +151,7 @@ public class ImageToVideoApplication {
 
 			recorder.stop();
 			recorder.release();
-			logger.info("Video successfully created under " + videoFileDir);
+			logger.info("Video without sound successfully created under " + videoFileDir);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -196,5 +205,33 @@ public class ImageToVideoApplication {
 		}
 	}
 
+	private static int getMP3Duration() {
+		try {
+			// create audio grabber
+			FrameGrabber grabber = new FFmpegFrameGrabber(audioFile);
+			grabber.start();
+
+			logger.info("MP3 frameRate = {}", grabber.getFrameRate());
+			logger.info("MP3 frameNumber = {}", grabber.getFrameNumber());
+			logger.info("MP3 lengthInFrames = {}", grabber.getLengthInFrames());
+			logger.info("MP3 lengthInTime = {} seconds", grabber.getLengthInTime() / 1000000);
+			int mp3DurationSeconds = (int) grabber.getLengthInTime() / 1000000;
+
+			// loop through audio frames
+			double loop = 0;
+			while (grabber.grab() != null) {
+				loop++;
+			}
+			grabber.stop();
+			logger.info("Grabber looped through {} times", loop);
+
+			return mp3DurationSeconds;
+
+		} catch (Exception e) {
+			e.printStackTrace();
+			logger.error("Failed to count frames");
+			return 0;
+		}
+	}
 
 }
