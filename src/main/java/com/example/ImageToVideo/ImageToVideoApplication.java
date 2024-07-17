@@ -114,10 +114,10 @@ public class ImageToVideoApplication {
 
 		// Initialize the FFmpegFrameRecorder
 		FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(outputFile, width, height);
-		recorder.setVideoCodec(avcodec.AV_CODEC_ID_H264);
 		recorder.setFormat("mp4");
 		recorder.setFrameRate(fps);
-		recorder.setPixelFormat(avutil.AV_PIX_FMT_YUV420P);
+		//recorder.setVideoCodec(avcodec.AV_CODEC_ID_H264);
+		//recorder.setPixelFormat(avutil.AV_PIX_FMT_YUV420P);
 
 		try {
 			recorder.start();
@@ -139,8 +139,9 @@ public class ImageToVideoApplication {
 
 			recorder.stop();
 			recorder.release();
+			System.out.println("Video successfully created under " + videoFileDir);
 		} catch (IOException e) {
-			e.printStackTrace();
+			//e.printStackTrace();
 		}
 	}
 
