@@ -1,10 +1,7 @@
 # Getting Started
 
-
-### Further Reading
+### JavaCV
 https://github.com/bytedeco/javacv
-
-https://github.com/zakgof/velvet-video
 
 ### Reference Documentation
 For further reference, please consider the following sections:
