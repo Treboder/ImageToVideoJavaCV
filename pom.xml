@@ -43,6 +43,11 @@
 			<artifactId>javacv-platform</artifactId>
 			<version>1.5.7</version>
 		</dependency>
+<!--		<dependency>-->
+<!--			<groupId>org.bytedeco</groupId>-->
+<!--			<artifactId>opencv</artifactId>-->
+<!--			<version>4.5.5-1.5.7</version> &lt;!&ndash; Replace with the latest version &ndash;&gt;-->
+<!--		</dependency>-->
 	</dependencies>
 
 	<build>

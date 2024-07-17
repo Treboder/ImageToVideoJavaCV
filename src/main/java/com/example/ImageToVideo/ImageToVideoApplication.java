@@ -1,8 +1,11 @@
 package com.example.ImageToVideo;
 
-import org.bytedeco.javacv.FFmpegFrameRecorder;
+import org.bytedeco.ffmpeg.avcodec.AVPacket;
+import org.bytedeco.javacv.*;
 import org.bytedeco.javacv.Frame;
-import org.bytedeco.javacv.Java2DFrameConverter;
+import org.opencv.videoio.VideoCapture;
+import org.opencv.videoio.VideoWriter;
+import org.opencv.videoio.Videoio;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
@@ -17,6 +20,8 @@ import java.io.IOException;
 import org.bytedeco.ffmpeg.global.avcodec;
 import org.bytedeco.ffmpeg.global.avutil;
 
+//import org.bytedeco.javacv.OpenCVFrameGrabber;
+
 @SpringBootApplication
 public class ImageToVideoApplication {
 
@@ -25,21 +30,30 @@ public class ImageToVideoApplication {
 	private static String imageFileDir = "data/input";
 	private static String videoFileDir = "data/output";
 	private static String outputFile = "data/output/video.mp4";
+	private static String audioFile = "data/audio/An-Epic-Story.mp3";
 
 	private static int width = 640;  // Set to your image width
 	private static int height = 480; // Set to your image height
 	private static int fps = 30;
 	private static int numberOfImages = 30 * 5;
 
+	private static String videoFilename = "data/output/video.mp4";
+	private static String audioFilename = "data/audio/An-Epic-Story.mp3";
+	private static String outputFilename = "data/output/videoWithAudio.mp4";
+
 	public static void main(String[] args) {
 		SpringApplication.run(ImageToVideoApplication.class, args);
-		logger.info("launch ImageToVideo");
+		logger.info("Launch ImageToVideo");
 
-		cleanUpDisk(imageFileDir);
-		createImageSequence();
+		//cleanUpDisk(imageFileDir);
+		//createImageSequence();
 
-		cleanUpDisk(videoFileDir);
-		createVideoFromImageSequence();
+		//cleanUpDisk(videoFileDir);
+		//createVideoFromImageSequence();
+
+		//addAudio1();
+		//addAudio2();
+		addAudio3();
 	}
 
 	private static void cleanUpDisk(String folderPath) {
@@ -144,6 +158,181 @@ public class ImageToVideoApplication {
 			//e.printStackTrace();
 		}
 	}
+
+	private static void addAudio1() {
+		FrameGrabber grabber1 = new FFmpegFrameGrabber(videoFilename);
+		FrameGrabber grabber2 = new FFmpegFrameGrabber(audioFilename);
+		try {
+			grabber1.start();
+			grabber2.start();
+			FrameRecorder recorder = new FFmpegFrameRecorder(outputFile,
+				grabber1.getImageWidth(), grabber1.getImageHeight(),
+				grabber2.getAudioChannels());
+			recorder.setFrameRate(grabber1.getFrameRate());
+			recorder.setSampleFormat(grabber2.getSampleFormat());
+			recorder.setSampleRate(grabber2.getSampleRate());
+
+			recorder.setAudioCodec(grabber2.getAudioCodec());
+			int ac = grabber2.getAudioCodec();
+
+			recorder.start();
+			Frame frame1, frame2 = null;
+			while ((frame1 = grabber1.grabFrame()) != null || (frame2 = grabber2.grabFrame()) != null) {
+				recorder.record(frame1);
+				recorder.record(frame2);
+			}
+			recorder.stop();
+			grabber1.stop();
+			grabber2.stop();
+		} catch (FrameGrabber.Exception | FrameRecorder.Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	private static void addAudio2() {
+
+		FFmpegFrameGrabber videoGrabber = new FFmpegFrameGrabber(videoFilename);
+		FFmpegFrameGrabber audioGrabber = new FFmpegFrameGrabber(audioFilename);
+		FFmpegFrameRecorder recorder = null;
+
+		try {
+			// Initialize video grabber
+			videoGrabber.start();
+			int videoWidth = videoGrabber.getImageWidth();
+			int videoHeight = videoGrabber.getImageHeight();
+
+			// Initialize audio grabber
+			audioGrabber.start();
+
+			// Initialize recorder
+			recorder = new FFmpegFrameRecorder(outputFilename, videoWidth, videoHeight, audioGrabber.getAudioChannels());
+			//recorder.setVideoCodec(videoGrabber.getVideoCodec());
+			//recorder.setVideoBitrate(videoGrabber.getVideoBitrate());
+			recorder.setFormat("mp4");
+			recorder.setFrameRate(fps);
+			//recorder.setFrameRate(videoGrabber.getFrameRate());
+			//recorder.setSampleRate(audioGrabber.getSampleRate());
+			//recorder.setAudioCodec(avcodec.AV_CODEC_ID_AAC);
+
+			recorder.start();
+
+			// Record video frames
+			while (true) {
+				AVPacket videoPacket = videoGrabber.grabPacket();
+				if (videoPacket == null || videoPacket.size() <= 0 || videoPacket.data() == null) {
+					break;
+				}
+				recorder.recordPacket(videoPacket);
+				avcodec.av_packet_unref(videoPacket);
+			}
+
+			// Record audio frames
+			while (true) {
+				AVPacket audioPacket = audioGrabber.grabPacket();
+				if (audioPacket == null || audioPacket.size() <= 0 || audioPacket.data() == null) {
+					break;
+				}
+				recorder.recordPacket(audioPacket);
+				avcodec.av_packet_unref(audioPacket);
+			}
+
+			recorder.stop();
+			videoGrabber.stop();
+			audioGrabber.stop();
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				if (recorder != null) {
+					recorder.release();
+				}
+				if (videoGrabber != null) {
+					videoGrabber.release();
+				}
+				if (audioGrabber != null) {
+					audioGrabber.release();
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
+	private static void addAudio3() {
+
+		// OpenCV video handling
+		VideoCapture videoCapture = new VideoCapture(videoFilename);
+		if (!videoCapture.isOpened()) {
+			System.err.println("Error opening video file");
+			return;
+		}
+
+		// Get video properties
+		int frameWidth = (int) videoCapture.get(Videoio.CAP_PROP_FRAME_WIDTH);
+		int frameHeight = (int) videoCapture.get(Videoio.CAP_PROP_FRAME_HEIGHT);
+		double fps = videoCapture.get(Videoio.CAP_PROP_FPS);
+		int fourcc = VideoWriter.fourcc('M', 'J', 'P', 'G');
+
+		// OpenCV to read frames and JavaCV to write frames with audio
+		OpenCVFrameGrabber frameGrabber = new OpenCVFrameGrabber(videoFilename);
+		FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(outputFilename, frameWidth, frameHeight, 2); // 2 audio channels
+		FFmpegFrameGrabber audioGrabber = new FFmpegFrameGrabber(audioFilename);
+
+		try {
+			// Initialize grabbers and recorder
+			frameGrabber.start();
+			audioGrabber.start();
+			recorder.setFrameRate(fps);
+			recorder.setVideoCodec(avcodec.AV_CODEC_ID_MPEG4);
+			recorder.setFormat("mp4");
+			recorder.setAudioCodec(avcodec.AV_CODEC_ID_AAC);
+			recorder.setSampleRate(audioGrabber.getSampleRate());
+			recorder.setAudioChannels(audioGrabber.getAudioChannels());
+			recorder.start();
+
+			// Read video frames and record them
+			while (true) {
+				org.bytedeco.javacv.Frame frame = frameGrabber.grab();
+				if (frame == null) {
+					break;
+				}
+				recorder.record(frame);
+			}
+
+			// Read audio frames and record them
+			while (true) {
+				AVPacket audioPacket = audioGrabber.grabPacket();
+				if (audioPacket == null || audioPacket.size() <= 0 || audioPacket.data() == null) {
+					break;
+				}
+				recorder.recordPacket(audioPacket);
+				avcodec.av_packet_unref(audioPacket);
+			}
+
+			recorder.stop();
+			frameGrabber.stop();
+			audioGrabber.stop();
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				if (recorder != null) {
+					recorder.release();
+				}
+				if (frameGrabber != null) {
+					frameGrabber.release();
+				}
+				if (audioGrabber != null) {
+					audioGrabber.release();
+				}
+				videoCapture.release();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
+
 
 
 }
