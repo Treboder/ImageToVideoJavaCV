@@ -1,6 +1,7 @@
 package com.example.ImageToVideo;
 
-import org.bytedeco.ffmpeg.avformat.AVFormatContext;
+import com.mpatric.mp3agic.ID3v2;
+import com.mpatric.mp3agic.Mp3File;
 import org.bytedeco.javacv.*;
 import org.bytedeco.javacv.Frame;
 import org.slf4j.Logger;
@@ -24,9 +25,11 @@ public class ImageToVideoApplication {
 	private static String imageFileDir = "data/input";
 	private static String videoFileDir = "data/output";
 
-	private static String outputFile = "data/output/video_raw.mp4";
-	private static String audioFile = "data/audio/An-Epic-Story.mp3";
-	private static String finalFile = "data/output/video_sound.mp4";
+	private static String audioFileOriginal = "data/audio/An-Epic-Story-without-cover.mp3";
+	private static String audioFileWithoutCover = "data/audio/An-Epic-Story.mp3";
+
+	private static String videoFileWithoutSound = "data/output/video_raw.mp4";
+	private static String videoFileWithSound = "data/output/video_sound.mp4";
 
 	private static int width = 640;  // Set to your image width
 	private static int height = 480; // Set to your image height
@@ -39,23 +42,17 @@ public class ImageToVideoApplication {
 		SpringApplication.run(ImageToVideoApplication.class, args);
 		logger.info("Launch ImageToVideo");
 
-		//getMP3Duration();
-		videoLengthSeconds = getMP3Duration()+1;
-		numberOfImages = fps * videoLengthSeconds;
-		logger.info("Need to create {} images", numberOfImages);
-
 		cleanUpDisk(imageFileDir);
-		createImageSequence();
-
 		cleanUpDisk(videoFileDir);
+
+		createImageSequence();
+		createMP3withoutCoverImage();
 		createVideoWithoutSound();
 		createVideoWithSound();
 
 	}
 
 	private static void cleanUpDisk(String folderPath) {
-		// Specify the folder path
-		//String folderPath = "path/to/your/folder";
 
 		// Create a File object for the folder
 		File folder = new File(folderPath);
@@ -83,10 +80,19 @@ public class ImageToVideoApplication {
 		} else {
 			logger.error("The specified path is not a folder or does not exist.");
 		}
+		logger.info("Deleted all files under {}", folderPath);
 	}
 
 	private static void createImageSequence() {
 
+		videoLengthSeconds = getMP3Duration();
+		numberOfImages = fps * videoLengthSeconds;
+		logger.info("Need to create {} images", numberOfImages);
+
+		int x = 0;
+		int y = 50;
+
+		logger.info("Start creating image sequence with {} images", numberOfImages);
 		for(int i=0; i<numberOfImages; i++) {
 			// Create a buffered image
 			BufferedImage bufferedImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
@@ -98,14 +104,18 @@ public class ImageToVideoApplication {
 			g2d.setColor(Color.WHITE);
 			g2d.fillRect(0, 0, width, height);
 
+			// determine next position
+			x = x + 2;
+			if(x>width) x = 0;
+
 			// Draw a rectangle
 			g2d.setColor(Color.RED);
-			g2d.fillRect(i, 100, 100, 100);
+			g2d.fillRect(x, y, 100, 100);
 
 			// Draw some text
 			g2d.setColor(Color.BLACK);
 			g2d.setFont(new Font("Arial", Font.BOLD, 50));
-			g2d.drawString("Hello, World!", 150, 400);
+			g2d.drawString("Hello "+i, 150, 400);
 
 			// Dispose of the graphics context to release resources
 			g2d.dispose();
@@ -119,13 +129,15 @@ public class ImageToVideoApplication {
 				e.printStackTrace();
 			}
 		}
-		logger.info("Created {} images", numberOfImages);
+		logger.info("Finished creating image sequence with {} images", numberOfImages);
 	}
 
 	private static void createVideoWithoutSound() {
 
+		logger.info("Start creating video without sound");
+
 		// Initialize the FFmpegFrameRecorder
-		FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(outputFile, width, height);
+		FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(videoFileWithoutSound, width, height);
 		recorder.setFormat("mp4");
 		recorder.setFrameRate(fps);
 		//recorder.setVideoCodec(avcodec.AV_CODEC_ID_H264);
@@ -157,10 +169,33 @@ public class ImageToVideoApplication {
 		}
 	}
 
+	private static void createMP3withoutCoverImage() {
+
+		try {
+			Mp3File mp3File = new Mp3File(audioFileOriginal);
+
+			if (mp3File.hasId3v2Tag()) {
+				ID3v2 id3v2Tag = mp3File.getId3v2Tag();
+				// Remove the cover image
+				id3v2Tag.clearAlbumImage();
+
+				// Save the modified MP3 file
+				mp3File.save(audioFileWithoutCover);
+
+				System.out.println("Cover image removed successfully!");
+			} else {
+				System.out.println("The MP3 file does not have an ID3v2 tag.");
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
 	private static void createVideoWithSound() {
+		logger.info("Start creating video with sound");
 		try {
 			// Create the recorder
-			FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(finalFile, width, height, 2);
+			FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(videoFileWithSound, width, height, 2);
 			recorder.setFormat("mp4");
 			recorder.setFrameRate(fps);
 			//recorder.setVideoCodec(avcodec.AV_CODEC_ID_H264);
@@ -171,7 +206,7 @@ public class ImageToVideoApplication {
 			recorder.start();
 
 			// create audio grabber
-			FrameGrabber grabber = new FFmpegFrameGrabber(audioFile);
+			FrameGrabber grabber = new FFmpegFrameGrabber(audioFileWithoutCover);
 			grabber.start();
 
 			// Add video frames
@@ -208,7 +243,7 @@ public class ImageToVideoApplication {
 	private static int getMP3Duration() {
 		try {
 			// create audio grabber
-			FrameGrabber grabber = new FFmpegFrameGrabber(audioFile);
+			FrameGrabber grabber = new FFmpegFrameGrabber(audioFileOriginal);
 			grabber.start();
 
 			logger.info("MP3 frameRate = {}", grabber.getFrameRate());
@@ -233,5 +268,6 @@ public class ImageToVideoApplication {
 			return 0;
 		}
 	}
+
 
 }
