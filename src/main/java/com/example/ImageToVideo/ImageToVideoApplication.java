@@ -14,6 +14,13 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 //import org.bytedeco.javacv.OpenCVFrameGrabber;
 
@@ -22,14 +29,18 @@ public class ImageToVideoApplication {
 
 	private static Logger logger = LoggerFactory.getLogger(ImageToVideoApplication.class);
 
-	private static String imageFileDir = "data/input";
-	private static String videoFileDir = "data/output";
+	// ToDo: create images in memory (save optionally)
+	// ToDo: loop through multiple mp3s
 
-	private static String audioFileOriginal = "data/audio/An-Epic-Story.mp3";
-	private static String audioFileWithoutCover = "data/audio/An-Epic-Story-without-cover.mp3";
+	private static String imageFileDir = "data/images";
+	private static String videoFileDir = "data/video";
+	private static String audioFileOriginalDir = "data/audio/original";
+	private static String audioFileWithoutCoverDir = "data/audio/woCover";
 
-	private static String videoFileWithoutSound = "data/output/video_raw.mp4";
-	private static String videoFileWithSound = "data/output/video_sound.mp4";
+	private static String audioFileNamePostfixWithoutCover = "-woc";
+
+	private static String videoFileNameWithoutSound = "video_raw.mp4";
+	private static String videoFileNameWithSound = "video_sound.mp4";
 
 	private static int width = 640;  // Set to your image width
 	private static int height = 480; // Set to your image height
@@ -42,17 +53,24 @@ public class ImageToVideoApplication {
 		SpringApplication.run(ImageToVideoApplication.class, args);
 		logger.info("Launch ImageToVideo");
 
-		cleanUpDisk(imageFileDir);
-		cleanUpDisk(videoFileDir);
+		cleanUpDirectory(audioFileWithoutCoverDir);
+		Set<String> originalAudioFiles = getListOfOriginalAudioFiles();
+		for(String audioFile: originalAudioFiles)
+			createMP3withoutCoverImage(audioFile);
 
-		createImageSequence();
-		createMP3withoutCoverImage();
-		createVideoWithoutSound();
-		createVideoWithSound();
+		cleanUpDirectory(videoFileDir);
+		Set<String> audioFilesWithoutCover = getListOfAudioFilesWithoutCover();
+		for(int i=0; i< audioFilesWithoutCover.size(); i++) {
+			String audioFileName = audioFilesWithoutCover.stream().toList().get(i);
+			cleanUpDirectory(imageFileDir);
+			createImageSequence(audioFileName);
+			createVideoWithoutSound(i);
+			createVideoWithSound(i, audioFileName);
+		}
 
 	}
 
-	private static void cleanUpDisk(String folderPath) {
+	private static void cleanUpDirectory(String folderPath) {
 
 		// Create a File object for the folder
 		File folder = new File(folderPath);
@@ -83,9 +101,33 @@ public class ImageToVideoApplication {
 		logger.info("Deleted all files under {}", folderPath);
 	}
 
-	private static void createImageSequence() {
+	private static void createMP3withoutCoverImage(String audioOriginalFileName) {
 
-		videoLengthSeconds = getMP3Duration();
+		try {
+			String audioFilePathOriginal = audioFileOriginalDir + "/" + audioOriginalFileName;
+			String audioFilePathWithoutCover = audioFileWithoutCoverDir + "/" + audioOriginalFileName.substring(0, audioOriginalFileName.length()-4) + audioFileNamePostfixWithoutCover +".mp3";
+			Mp3File mp3File = new Mp3File(audioFilePathOriginal);
+
+			if (mp3File.hasId3v2Tag()) {
+				ID3v2 id3v2Tag = mp3File.getId3v2Tag();
+				// Remove the cover image
+				id3v2Tag.clearAlbumImage();
+
+				// Save the modified MP3 file
+				mp3File.save(audioFilePathWithoutCover);
+
+				System.out.println("Cover image removed successfully!");
+			} else {
+				System.out.println("The MP3 file does not have an ID3v2 tag.");
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	private static void createImageSequence(String audioFilesWithoutCover) {
+
+		videoLengthSeconds = getMP3Duration(audioFilesWithoutCover);
 		numberOfImages = fps * videoLengthSeconds;
 		logger.info("Need to create {} images", numberOfImages);
 
@@ -132,12 +174,13 @@ public class ImageToVideoApplication {
 		logger.info("Finished creating image sequence with {} images", numberOfImages);
 	}
 
-	private static void createVideoWithoutSound() {
+	private static void createVideoWithoutSound(int index) {
 
 		logger.info("Start creating video without sound");
 
 		// Initialize the FFmpegFrameRecorder
-		FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(videoFileWithoutSound, width, height);
+		String fileNamePath = videoFileDir + "/" + index + "_" + videoFileNameWithoutSound;
+		FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(fileNamePath, width, height);
 		recorder.setFormat("mp4");
 		recorder.setFrameRate(fps);
 		//recorder.setVideoCodec(avcodec.AV_CODEC_ID_H264);
@@ -169,33 +212,12 @@ public class ImageToVideoApplication {
 		}
 	}
 
-	private static void createMP3withoutCoverImage() {
-
-		try {
-			Mp3File mp3File = new Mp3File(audioFileOriginal);
-
-			if (mp3File.hasId3v2Tag()) {
-				ID3v2 id3v2Tag = mp3File.getId3v2Tag();
-				// Remove the cover image
-				id3v2Tag.clearAlbumImage();
-
-				// Save the modified MP3 file
-				mp3File.save(audioFileWithoutCover);
-
-				System.out.println("Cover image removed successfully!");
-			} else {
-				System.out.println("The MP3 file does not have an ID3v2 tag.");
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
-
-	private static void createVideoWithSound() {
+	private static void createVideoWithSound(int index, String audioWithoutCoverFileName) {
 		logger.info("Start creating video with sound");
 		try {
 			// Create the recorder
-			FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(videoFileWithSound, width, height, 2);
+			String fileNamePath = videoFileDir + "/" + index + "_" + videoFileNameWithSound;
+			FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(fileNamePath, width, height, 2);
 			recorder.setFormat("mp4");
 			recorder.setFrameRate(fps);
 			// recorder.setVideoCodec(avcodec.AV_CODEC_ID_H264);
@@ -206,7 +228,8 @@ public class ImageToVideoApplication {
 			recorder.start();
 
 			// create audio grabber
-			FrameGrabber grabber = new FFmpegFrameGrabber(audioFileWithoutCover);
+			String audioFilePathWithoutCover = audioFileWithoutCoverDir + "/" + audioWithoutCoverFileName.substring(0, audioWithoutCoverFileName.length()-4) + audioFileNamePostfixWithoutCover +".mp3";
+			FrameGrabber grabber = new FFmpegFrameGrabber(audioFilePathWithoutCover);
 			grabber.start();
 
 			// Add video frames
@@ -240,10 +263,11 @@ public class ImageToVideoApplication {
 		}
 	}
 
-	private static int getMP3Duration() {
+	private static int getMP3Duration(String audioFileWithoutCover) {
 		try {
 			// create audio grabber
-			FrameGrabber grabber = new FFmpegFrameGrabber(audioFileOriginal);
+			String audioFilePathOriginal = audioFileWithoutCoverDir + "/" + audioFileWithoutCover;
+			FrameGrabber grabber = new FFmpegFrameGrabber(audioFilePathOriginal);
 			grabber.start();
 
 			logger.debug("MP3 frameRate = {}", grabber.getFrameRate());
@@ -261,5 +285,34 @@ public class ImageToVideoApplication {
 		}
 	}
 
+	private static Set<String> getListOfOriginalAudioFiles() {
+		Set<String> fileSet = new HashSet<>();
+		try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get(audioFileOriginalDir))) {
+			for (Path path : stream) {
+				if (!Files.isDirectory(path)) {
+					fileSet.add(path.getFileName()
+							.toString());
+				}
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return fileSet;
+	}
+
+	private static Set<String> getListOfAudioFilesWithoutCover() {
+		Set<String> fileSet = new HashSet<>();
+		try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get(audioFileWithoutCoverDir))) {
+			for (Path path : stream) {
+				if (!Files.isDirectory(path)) {
+					fileSet.add(path.getFileName()
+							.toString());
+				}
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return fileSet;
+	}
 
 }
