@@ -19,9 +19,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
 
 //import org.bytedeco.javacv.OpenCVFrameGrabber;
 
@@ -33,7 +30,10 @@ public class ImageToVideoApplication {
 	// ToDo: create images in memory (save optionally)
 
 	private static String imageFileDir = "data/images";
-	private static String videoFileDir = "data/video";
+
+	private static String videoFileMutedDir = "data/video/muted";
+	private static String videoFileSoundDir = "data/video/sound";
+
 	private static String audioFileOriginalDir = "data/audio/original";
 	private static String audioFileWithoutCoverDir = "data/audio/woCover";
 
@@ -53,12 +53,17 @@ public class ImageToVideoApplication {
 		SpringApplication.run(ImageToVideoApplication.class, args);
 		logger.info("Launch ImageToVideo");
 
+		// create copies of mp3 without cover image
 		cleanUpDirectory(audioFileWithoutCoverDir);
 		ArrayList<String> originalAudioFiles = getListOfOriginalAudioFiles();
 		for(String audioFile: originalAudioFiles)
 			createMP3withoutCoverImage(audioFile);
 
-		cleanUpDirectory(videoFileDir);
+		// delete video files
+		cleanUpDirectory(videoFileMutedDir);
+		cleanUpDirectory(videoFileSoundDir);
+
+		// loop through mp3s and create videos for each
 		ArrayList<String> audioFilesWithoutCover = getListOfAudioFilesWithoutCover();
 		for(int i=0; i< audioFilesWithoutCover.size(); i++) {
 			String audioFileName = audioFilesWithoutCover.get(i);
@@ -176,7 +181,7 @@ public class ImageToVideoApplication {
 		logger.info("Create video without sound ({})", index);
 		try {
 			// Initialize the FFmpegFrameRecorder
-			String fileNamePath = videoFileDir + "/" + index + "_" + videoFileNameWithoutSound;
+			String fileNamePath = videoFileMutedDir + "/" + index + "_" + videoFileNameWithoutSound;
 			FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(fileNamePath, width, height);
 			recorder.setFormat("mp4");
 			recorder.setFrameRate(fps);
@@ -211,7 +216,7 @@ public class ImageToVideoApplication {
 		logger.info("Create video with sound from {} ({})", audioWithoutCoverFileName, index);
 		try {
 			// Create the recorder
-			String fileNamePath = videoFileDir + "/" + index + "_" + videoFileNameWithSound;
+			String fileNamePath = videoFileSoundDir + "/" + index + "_" + videoFileNameWithSound;
 			FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(fileNamePath, width, height, 2);
 			recorder.setFormat("mp4");
 			recorder.setFrameRate(fps);
