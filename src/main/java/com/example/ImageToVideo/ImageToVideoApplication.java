@@ -29,8 +29,8 @@ public class ImageToVideoApplication {
 
 	private static Logger logger = LoggerFactory.getLogger(ImageToVideoApplication.class);
 
+	// ToDo: improve logging
 	// ToDo: create images in memory (save optionally)
-	// ToDo: loop through multiple mp3s
 
 	private static String imageFileDir = "data/images";
 	private static String videoFileDir = "data/video";
@@ -44,7 +44,7 @@ public class ImageToVideoApplication {
 
 	private static int width = 640;  // Set to your image width
 	private static int height = 480; // Set to your image height
-	private static int fps = 30;
+	private static int fps = 2;
 
 	private static int videoLengthSeconds;
 	private static int numberOfImages;
@@ -67,7 +67,6 @@ public class ImageToVideoApplication {
 			createVideoWithoutSound(i);
 			createVideoWithSound(i, audioFileName);
 		}
-
 	}
 
 	private static void cleanUpDirectory(String folderPath) {
@@ -116,12 +115,13 @@ public class ImageToVideoApplication {
 				// Save the modified MP3 file
 				mp3File.save(audioFilePathWithoutCover);
 
-				System.out.println("Cover image removed successfully!");
+				logger.info("Cover image removed successfully! ({})", audioOriginalFileName);
 			} else {
-				System.out.println("The MP3 file does not have an ID3v2 tag.");
+				logger.warn("The MP3 file does not have an ID3v2 tag ({})", audioOriginalFileName);
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
+			logger.error("Failed to remove ID3v2 tag from MP3 ({})", audioOriginalFileName);
 		}
 	}
 
@@ -228,7 +228,7 @@ public class ImageToVideoApplication {
 			recorder.start();
 
 			// create audio grabber
-			String audioFilePathWithoutCover = audioFileWithoutCoverDir + "/" + audioWithoutCoverFileName.substring(0, audioWithoutCoverFileName.length()-4) + audioFileNamePostfixWithoutCover +".mp3";
+			String audioFilePathWithoutCover = audioFileWithoutCoverDir + "/" + audioWithoutCoverFileName.substring(0, audioWithoutCoverFileName.length()-4) +".mp3";
 			FrameGrabber grabber = new FFmpegFrameGrabber(audioFilePathWithoutCover);
 			grabber.start();
 
