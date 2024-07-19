@@ -47,6 +47,8 @@
 			<groupId>com.mpatric</groupId>
 			<artifactId>mp3agic</artifactId>
 			<version>0.9.1</version>
+			<scope>system</scope>
+			<systemPath>${project.basedir}/src/main/resources/mp3agic-0.9.1.jar</systemPath>
 		</dependency>
 
 	</dependencies>

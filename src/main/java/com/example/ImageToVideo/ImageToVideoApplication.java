@@ -25,8 +25,8 @@ public class ImageToVideoApplication {
 	private static String imageFileDir = "data/input";
 	private static String videoFileDir = "data/output";
 
-	private static String audioFileOriginal = "data/audio/An-Epic-Story-without-cover.mp3";
-	private static String audioFileWithoutCover = "data/audio/An-Epic-Story.mp3";
+	private static String audioFileOriginal = "data/audio/An-Epic-Story.mp3";
+	private static String audioFileWithoutCover = "data/audio/An-Epic-Story-without-cover.mp3";
 
 	private static String videoFileWithoutSound = "data/output/video_raw.mp4";
 	private static String videoFileWithSound = "data/output/video_sound.mp4";
@@ -198,7 +198,7 @@ public class ImageToVideoApplication {
 			FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(videoFileWithSound, width, height, 2);
 			recorder.setFormat("mp4");
 			recorder.setFrameRate(fps);
-			//recorder.setVideoCodec(avcodec.AV_CODEC_ID_H264);
+			// recorder.setVideoCodec(avcodec.AV_CODEC_ID_H264);
 			// recorder.setVideoQuality(0); // Maximum quality
 			// recorder.setAudioCodec(avcodec.AV_CODEC_ID_AAC);
 			// recorder.setAudioBitrate(192000);
@@ -246,20 +246,12 @@ public class ImageToVideoApplication {
 			FrameGrabber grabber = new FFmpegFrameGrabber(audioFileOriginal);
 			grabber.start();
 
-			logger.info("MP3 frameRate = {}", grabber.getFrameRate());
-			logger.info("MP3 frameNumber = {}", grabber.getFrameNumber());
-			logger.info("MP3 lengthInFrames = {}", grabber.getLengthInFrames());
-			logger.info("MP3 lengthInTime = {} seconds", grabber.getLengthInTime() / 1000000);
+			logger.debug("MP3 frameRate = {}", grabber.getFrameRate());
+			logger.debug("MP3 frameNumber = {}", grabber.getFrameNumber());
+			logger.debug("MP3 lengthInFrames = {}", grabber.getLengthInFrames());
+
 			int mp3DurationSeconds = (int) grabber.getLengthInTime() / 1000000;
-
-			// loop through audio frames
-			double loop = 0;
-			while (grabber.grab() != null) {
-				loop++;
-			}
-			grabber.stop();
-			logger.info("Grabber looped through {} times", loop);
-
+			logger.info("MP3 duration = {} seconds", mp3DurationSeconds);
 			return mp3DurationSeconds;
 
 		} catch (Exception e) {
