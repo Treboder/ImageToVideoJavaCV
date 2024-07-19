@@ -18,6 +18,7 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
@@ -29,7 +30,6 @@ public class ImageToVideoApplication {
 
 	private static Logger logger = LoggerFactory.getLogger(ImageToVideoApplication.class);
 
-	// ToDo: improve logging
 	// ToDo: create images in memory (save optionally)
 
 	private static String imageFileDir = "data/images";
@@ -54,22 +54,24 @@ public class ImageToVideoApplication {
 		logger.info("Launch ImageToVideo");
 
 		cleanUpDirectory(audioFileWithoutCoverDir);
-		Set<String> originalAudioFiles = getListOfOriginalAudioFiles();
+		ArrayList<String> originalAudioFiles = getListOfOriginalAudioFiles();
 		for(String audioFile: originalAudioFiles)
 			createMP3withoutCoverImage(audioFile);
 
 		cleanUpDirectory(videoFileDir);
-		Set<String> audioFilesWithoutCover = getListOfAudioFilesWithoutCover();
+		ArrayList<String> audioFilesWithoutCover = getListOfAudioFilesWithoutCover();
 		for(int i=0; i< audioFilesWithoutCover.size(); i++) {
-			String audioFileName = audioFilesWithoutCover.stream().toList().get(i);
+			String audioFileName = audioFilesWithoutCover.get(i);
 			cleanUpDirectory(imageFileDir);
-			createImageSequence(audioFileName);
+			createImageSequence(i, audioFileName);
 			createVideoWithoutSound(i);
 			createVideoWithSound(i, audioFileName);
 		}
 	}
 
 	private static void cleanUpDirectory(String folderPath) {
+
+		logger.info("Delete all files in {}", folderPath);
 
 		// Create a File object for the folder
 		File folder = new File(folderPath);
@@ -97,11 +99,11 @@ public class ImageToVideoApplication {
 		} else {
 			logger.error("The specified path is not a folder or does not exist.");
 		}
-		logger.info("Deleted all files under {}", folderPath);
 	}
 
 	private static void createMP3withoutCoverImage(String audioOriginalFileName) {
 
+		logger.info("Remove mp3 cover image from ({})", audioOriginalFileName);
 		try {
 			String audioFilePathOriginal = audioFileOriginalDir + "/" + audioOriginalFileName;
 			String audioFilePathWithoutCover = audioFileWithoutCoverDir + "/" + audioOriginalFileName.substring(0, audioOriginalFileName.length()-4) + audioFileNamePostfixWithoutCover +".mp3";
@@ -114,8 +116,6 @@ public class ImageToVideoApplication {
 
 				// Save the modified MP3 file
 				mp3File.save(audioFilePathWithoutCover);
-
-				logger.info("Cover image removed successfully! ({})", audioOriginalFileName);
 			} else {
 				logger.warn("The MP3 file does not have an ID3v2 tag ({})", audioOriginalFileName);
 			}
@@ -125,16 +125,15 @@ public class ImageToVideoApplication {
 		}
 	}
 
-	private static void createImageSequence(String audioFilesWithoutCover) {
+	private static void createImageSequence(int index, String audioFileWithoutCover) {
 
-		videoLengthSeconds = getMP3Duration(audioFilesWithoutCover);
+		// determine number of images
+		videoLengthSeconds = getMP3Duration(audioFileWithoutCover);
 		numberOfImages = fps * videoLengthSeconds;
-		logger.info("Need to create {} images", numberOfImages);
+		logger.info("Create {} images based on {} ({})", numberOfImages, audioFileWithoutCover, index);
 
+		// create images
 		int x = 0;
-		int y = 50;
-
-		logger.info("Start creating image sequence with {} images", numberOfImages);
 		for(int i=0; i<numberOfImages; i++) {
 			// Create a buffered image
 			BufferedImage bufferedImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
@@ -152,7 +151,7 @@ public class ImageToVideoApplication {
 
 			// Draw a rectangle
 			g2d.setColor(Color.RED);
-			g2d.fillRect(x, y, 100, 100);
+			g2d.fillRect(x, 50, 100, 100);
 
 			// Draw some text
 			g2d.setColor(Color.BLACK);
@@ -166,27 +165,23 @@ public class ImageToVideoApplication {
 			File file = new File(imageFileDir + "/image" + i +".jpg");
 			try {
 				ImageIO.write(bufferedImage, "jpg", file);
-				logger.debug("Image saved successfully to " + file.getAbsolutePath());
+				logger.debug("Save image: " + file.getAbsolutePath());
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
 		}
-		logger.info("Finished creating image sequence with {} images", numberOfImages);
 	}
 
 	private static void createVideoWithoutSound(int index) {
-
-		logger.info("Start creating video without sound");
-
-		// Initialize the FFmpegFrameRecorder
-		String fileNamePath = videoFileDir + "/" + index + "_" + videoFileNameWithoutSound;
-		FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(fileNamePath, width, height);
-		recorder.setFormat("mp4");
-		recorder.setFrameRate(fps);
-		//recorder.setVideoCodec(avcodec.AV_CODEC_ID_H264);
-		//recorder.setPixelFormat(avutil.AV_PIX_FMT_YUV420P);
-
+		logger.info("Create video without sound ({})", index);
 		try {
+			// Initialize the FFmpegFrameRecorder
+			String fileNamePath = videoFileDir + "/" + index + "_" + videoFileNameWithoutSound;
+			FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(fileNamePath, width, height);
+			recorder.setFormat("mp4");
+			recorder.setFrameRate(fps);
+			//recorder.setVideoCodec(avcodec.AV_CODEC_ID_H264);
+			//recorder.setPixelFormat(avutil.AV_PIX_FMT_YUV420P);
 			recorder.start();
 
 			// Java2DFrameConverter to convert BufferedImage to Frame
@@ -206,14 +201,14 @@ public class ImageToVideoApplication {
 
 			recorder.stop();
 			recorder.release();
-			logger.info("Video without sound successfully created under " + videoFileDir);
+			logger.info("Save video: " + fileNamePath);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
 
 	private static void createVideoWithSound(int index, String audioWithoutCoverFileName) {
-		logger.info("Start creating video with sound");
+		logger.info("Create video with sound from {} ({})", audioWithoutCoverFileName, index);
 		try {
 			// Create the recorder
 			String fileNamePath = videoFileDir + "/" + index + "_" + videoFileNameWithSound;
@@ -253,11 +248,11 @@ public class ImageToVideoApplication {
 				recorder.record(audioFrame);
 			}
 
+			// stop recording and save file
 			grabber.stop();
 			recorder.stop();
 			recorder.release();
-
-			logger.info("Video with sound created successfully!");
+			logger.info("Save video: {} ({})", fileNamePath, index);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -270,49 +265,46 @@ public class ImageToVideoApplication {
 			FrameGrabber grabber = new FFmpegFrameGrabber(audioFilePathOriginal);
 			grabber.start();
 
-			logger.debug("MP3 frameRate = {}", grabber.getFrameRate());
-			logger.debug("MP3 frameNumber = {}", grabber.getFrameNumber());
-			logger.debug("MP3 lengthInFrames = {}", grabber.getLengthInFrames());
-
+			// get track duration in seconds
 			int mp3DurationSeconds = (int) grabber.getLengthInTime() / 1000000;
-			logger.info("MP3 duration = {} seconds", mp3DurationSeconds);
+			logger.info("Return {} s track length for {}", mp3DurationSeconds, audioFileWithoutCover);
 			return mp3DurationSeconds;
 
 		} catch (Exception e) {
 			e.printStackTrace();
-			logger.error("Failed to count frames");
+			logger.error("Failed to get mp3 duration");
 			return 0;
 		}
 	}
 
-	private static Set<String> getListOfOriginalAudioFiles() {
-		Set<String> fileSet = new HashSet<>();
+	private static ArrayList<String> getListOfOriginalAudioFiles() {
+		ArrayList<String> files = new ArrayList<>();
 		try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get(audioFileOriginalDir))) {
 			for (Path path : stream) {
 				if (!Files.isDirectory(path)) {
-					fileSet.add(path.getFileName()
-							.toString());
+					files.add(path.getFileName().toString());
 				}
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		return fileSet;
+		logger.info("Found {} audio files without cover", files.size());
+		return files;
 	}
 
-	private static Set<String> getListOfAudioFilesWithoutCover() {
-		Set<String> fileSet = new HashSet<>();
+	private static ArrayList<String> getListOfAudioFilesWithoutCover() {
+		ArrayList<String> files = new ArrayList<>();
 		try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get(audioFileWithoutCoverDir))) {
 			for (Path path : stream) {
 				if (!Files.isDirectory(path)) {
-					fileSet.add(path.getFileName()
-							.toString());
+					files.add(path.getFileName().toString());
 				}
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		return fileSet;
+		logger.info("Found {} audio files without cover", files.size());
+		return files;
 	}
 
 }
