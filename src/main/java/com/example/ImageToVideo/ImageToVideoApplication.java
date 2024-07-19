@@ -20,8 +20,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 
-//import org.bytedeco.javacv.OpenCVFrameGrabber;
-
 @SpringBootApplication
 public class ImageToVideoApplication {
 
@@ -39,8 +37,7 @@ public class ImageToVideoApplication {
 
 	private static String audioFileNamePostfixWithoutCover = "-woc";
 
-	private static String videoFileNameWithoutSound = "video_raw.mp4";
-	private static String videoFileNameWithSound = "video_sound.mp4";
+	private static String videoFormat = "mp4";
 
 	private static int width = 640;  // Set to your image width
 	private static int height = 480; // Set to your image height
@@ -181,9 +178,9 @@ public class ImageToVideoApplication {
 		logger.info("Create video without sound ({})", index);
 		try {
 			// Initialize the FFmpegFrameRecorder
-			String fileNamePath = videoFileMutedDir + "/" + index + "_" + videoFileNameWithoutSound;
+			String fileNamePath = videoFileMutedDir + "/" + index + "." + videoFormat;
 			FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(fileNamePath, width, height);
-			recorder.setFormat("mp4");
+			recorder.setFormat(videoFormat);
 			recorder.setFrameRate(fps);
 			//recorder.setVideoCodec(avcodec.AV_CODEC_ID_H264);
 			//recorder.setPixelFormat(avutil.AV_PIX_FMT_YUV420P);
@@ -216,9 +213,9 @@ public class ImageToVideoApplication {
 		logger.info("Create video with sound from {} ({})", audioWithoutCoverFileName, index);
 		try {
 			// Create the recorder
-			String fileNamePath = videoFileSoundDir + "/" + index + "_" + videoFileNameWithSound;
+			String fileNamePath = videoFileSoundDir + "/" + index + "." + videoFormat;
 			FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(fileNamePath, width, height, 2);
-			recorder.setFormat("mp4");
+			recorder.setFormat(videoFormat);
 			recorder.setFrameRate(fps);
 			// recorder.setVideoCodec(avcodec.AV_CODEC_ID_H264);
 			// recorder.setVideoQuality(0); // Maximum quality
