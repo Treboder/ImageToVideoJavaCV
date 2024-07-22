@@ -19,33 +19,25 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Map;
 
 @SpringBootApplication
 public class ImageToVideoApplication {
 
 	private static Logger logger = LoggerFactory.getLogger(ImageToVideoApplication.class);
 
-	// ToDo: create images in memory (save optionally)
-
 	private static String imageFileDir = "data/images";
 
 	private static String videoFileMutedDir = "data/video/muted";
 	private static String videoFileSoundDir = "data/video/sound";
+	private static String videoFileFormat = "mp4";
 
 	private static String audioFileOriginalDir = "data/audio/original";
 	private static String audioFileWithoutCoverDir = "data/audio/woCover";
-
 	private static String audioFileNamePostfixWithoutCover = "-woc";
 
-	private static String videoFormat = "mp4";
-
-	private static int width = 640;  // Set to your image width
-	private static int height = 480; // Set to your image height
-	private static int fps = 2;
-
-	private static int videoLengthSeconds;
-	private static int numberOfImages;
+	private static int videoWidth = 640;
+	private static int videoHeight = 480;
+	private static int videoFramesPerSecond = 2;
 
 	public static void main(String[] args) {
 		SpringApplication.run(ImageToVideoApplication.class, args);
@@ -66,7 +58,7 @@ public class ImageToVideoApplication {
 		for(int i=0; i< audioFilesWithoutCover.size(); i++) {
 			String audioFileName = audioFilesWithoutCover.get(i);
 			cleanUpDirectory(imageFileDir);
-			createImageSequence(i, audioFileName);
+			createImageSequence(i, audioFileName); // ToDo: create images in memory (save optionally)
 			createVideoWithoutSound(i);
 			createVideoWithSound(i, audioFileName);
 		}
@@ -131,26 +123,26 @@ public class ImageToVideoApplication {
 	private static void createImageSequence(int index, String audioFileWithoutCover) {
 
 		// determine number of images
-		videoLengthSeconds = getMP3Duration(audioFileWithoutCover);
-		numberOfImages = fps * videoLengthSeconds;
-		logger.info("Create {} images based on {} ({})", numberOfImages, audioFileWithoutCover, index);
+		int videoLengthSeconds = getMP3Duration(audioFileWithoutCover);
+		int videoFramesTotal = videoFramesPerSecond * videoLengthSeconds;
+		logger.info("Create {} images based on {} ({})", videoFramesTotal, audioFileWithoutCover, index);
 
 		// create images
 		int x = 0;
-		for(int i=0; i<numberOfImages; i++) {
+		for(int i = 0; i< videoFramesTotal; i++) {
 			// Create a buffered image
-			BufferedImage bufferedImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+			BufferedImage bufferedImage = new BufferedImage(videoWidth, videoHeight, BufferedImage.TYPE_INT_RGB);
 
 			// Get the graphics object to draw on the image
 			Graphics2D g2d = bufferedImage.createGraphics();
 
 			// Fill the background with white
 			g2d.setColor(Color.WHITE);
-			g2d.fillRect(0, 0, width, height);
+			g2d.fillRect(0, 0, videoWidth, videoHeight);
 
 			// determine next position
 			x = x + 2;
-			if(x>width) x = 0;
+			if(x> videoWidth) x = 0;
 
 			// Draw a rectangle
 			g2d.setColor(Color.RED);
@@ -179,10 +171,10 @@ public class ImageToVideoApplication {
 		logger.info("Create video without sound ({})", index);
 		try {
 			// Initialize the FFmpegFrameRecorder
-			String fileNamePath = videoFileMutedDir + "/" + index + "." + videoFormat;
-			FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(fileNamePath, width, height);
-			recorder.setFormat(videoFormat);
-			recorder.setFrameRate(fps);
+			String fileNamePath = videoFileMutedDir + "/" + index + "." + videoFileFormat;
+			FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(fileNamePath, videoWidth, videoHeight);
+			recorder.setFormat(videoFileFormat);
+			recorder.setFrameRate(videoFramesPerSecond);
 			//recorder.setVideoCodec(avcodec.AV_CODEC_ID_H264);
 			//recorder.setPixelFormat(avutil.AV_PIX_FMT_YUV420P);
 			recorder.start();
@@ -214,10 +206,10 @@ public class ImageToVideoApplication {
 		logger.info("Create video with sound from {} ({})", audioWithoutCoverFileName, index);
 		try {
 			// Create the recorder
-			String fileNamePath = videoFileSoundDir + "/" + index + "." + videoFormat;
-			FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(fileNamePath, width, height, 2);
-			recorder.setFormat(videoFormat);
-			recorder.setFrameRate(fps);
+			String fileNamePath = videoFileSoundDir + "/" + index + "." + videoFileFormat;
+			FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(fileNamePath, videoWidth, videoHeight, 2);
+			recorder.setFormat(videoFileFormat);
+			recorder.setFrameRate(videoFramesPerSecond);
 			// recorder.setVideoCodec(avcodec.AV_CODEC_ID_H264);
 			// recorder.setVideoQuality(0); // Maximum quality
 			// recorder.setAudioCodec(avcodec.AV_CODEC_ID_AAC);
