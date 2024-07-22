@@ -19,6 +19,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Map;
 
 @SpringBootApplication
 public class ImageToVideoApplication {
@@ -222,12 +223,19 @@ public class ImageToVideoApplication {
 			// recorder.setAudioCodec(avcodec.AV_CODEC_ID_AAC);
 			// recorder.setAudioBitrate(192000);
 			// recorder.setSampleRate(44100);
-			recorder.start();
+
 
 			// create audio grabber
 			String audioFilePathWithoutCover = audioFileWithoutCoverDir + "/" + audioWithoutCoverFileName.substring(0, audioWithoutCoverFileName.length()-4) +".mp3";
 			FrameGrabber grabber = new FFmpegFrameGrabber(audioFilePathWithoutCover);
+
 			grabber.start();
+
+			// set meta data
+			setMetaData(recorder, grabber, "Treboder");
+
+			recorder.start();
+
 
 			// Add video frames
 			Java2DFrameConverter converter = new Java2DFrameConverter();
@@ -258,6 +266,38 @@ public class ImageToVideoApplication {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+	}
+
+	private static void setMetaData(FFmpegFrameRecorder recorder, FrameGrabber audioGrabber, String title) {
+		recorder.setMetadata("title", title);
+		recorder.setMetadata("comment", "Treboder");
+		recorder.setMetadata("genre", "Treboder");
+		recorder.setMetadata("artist", "Treboder");
+		recorder.setMetadata("composer", "Music by "+ audioGrabber.getMetadata("artist"));
+
+//		all keys below do not work
+//		recorder.setMetadata("sub title", "Treboder");
+//		recorder.setMetadata("tag", "Treboder");
+//		recorder.setMetadata("tags", "Treboder");
+//		recorder.setMetadata("contributing artist", "Treboder");
+//		recorder.setMetadata("year", "2024");
+//		recorder.setMetadata("time", "2024");
+//		recorder.setMetadata("origin", "2024");
+//		recorder.setMetadata("owner", "2024");
+//		recorder.setMetadata("author", "2024");
+//		recorder.setMetadata("director", "Treboder");
+//		recorder.setMetadata("producer", "Treboder");
+//		recorder.setMetadata("writer", "Treboder");
+//		recorder.setMetadata("publisher", "Treboder");
+//		recorder.setMetadata("content provider", "Treboder");
+//		recorder.setMetadata("media created", "Treboder");
+//		recorder.setMetadata("encoded by", "Treboder");
+//		recorder.setMetadata("author URL", "Treboder");
+//		recorder.setMetadata("author url", "Treboder");
+//		recorder.setMetadata("author", "Treboder");
+//		recorder.setMetadata("url", "Treboder");
+//		recorder.setMetadata("promotion URL", "Treboder");
+//		recorder.setMetadata("copyright", "Treboder");
 	}
 
 	private static int getMP3Duration(String audioFileWithoutCover) {
